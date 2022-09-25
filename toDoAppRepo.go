@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"log"
 	"reflect"
 )
 
@@ -114,4 +116,14 @@ func (td ToDo) SerializeForCountAll() CountQuery {
 	}
 
 	return cq
+}
+
+func (td ToDo) SerializeToJson() []byte {
+	b, err := json.Marshal(td)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return b
 }

@@ -8,7 +8,7 @@ import (
 )
 
 func connectToDb(ac AppConfig) *sql.DB {
-	db, err := sql.Open(ac.driverType, ac.connectionString)
+	db, err := sql.Open(ac.driverType, ac.databaseConnectionString)
 
 	if err != nil {
 		log.Fatal(err)
