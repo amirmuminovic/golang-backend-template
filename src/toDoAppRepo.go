@@ -44,13 +44,15 @@ func (td ToDo) GetConditions() []string {
 
 	for i := 0; i < e.NumField(); i++ {
 		condition := ""
-		if e.Type().Field(i).Type.Name() == "string" {
-			condition = fmt.Sprintf("%s='%s'", e.Type().Field(i).Name, (e.Field(i).Interface()))
-		} else {
-			condition = fmt.Sprintf("%s=%s", e.Type().Field(i).Name, (e.Field(i).Interface()))
-		}
+		if !e.Field(i).IsZero() {
+			if e.Type().Field(i).Type.Name() == "string" {
+				condition = fmt.Sprintf("%s='%s'", e.Type().Field(i).Name, (e.Field(i).Interface()))
+			} else {
+				condition = fmt.Sprintf("%s=%s", e.Type().Field(i).Name, (e.Field(i).Interface()))
+			}
 
-		conditions = append(conditions, condition)
+			conditions = append(conditions, condition)
+		}
 	}
 
 	return conditions
@@ -94,4 +96,22 @@ func (td ToDo) SerializeForQueryAllDataWithSelectFields(keys []string) GetQuery 
 	}
 
 	return de
+}
+
+func (td ToDo) SerializeForCountWithFilter() CountQuery {
+	conditions := td.GetConditions()
+
+	cq := CountQuery{
+		conditions: conditions,
+	}
+
+	return cq
+}
+
+func (td ToDo) SerializeForCountAll() CountQuery {
+	cq := CountQuery{
+		conditions: []string{"TRUE"},
+	}
+
+	return cq
 }

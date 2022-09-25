@@ -56,9 +56,10 @@ func insertOne(db *sql.DB, tableProperties TableProperties, databaseEntry Insert
 
 func get(db *sql.DB, tableProperties TableProperties, databaseQuery GetQuery) *sql.Rows {
 	keys := strings.Join(databaseQuery.keys, ",")
-	conditions := strings.Join(databaseQuery.conditions, " AND ")
+	query := fmt.Sprintf("SELECT %s FROM %s", keys, tableProperties.tableName)
+	appendQueryWithCondition(query, databaseQuery.conditions)
 
-	rows, err := db.Query(fmt.Sprintf("SELECT %s FROM %s WHERE %s;", keys, tableProperties.tableName, conditions))
+	rows, err := db.Query(query)
 
 	if err != nil {
 		log.Fatal(err)
@@ -68,7 +69,10 @@ func get(db *sql.DB, tableProperties TableProperties, databaseQuery GetQuery) *s
 }
 
 func update(db *sql.DB, tableProperties TableProperties, updateEntry UpdateEntry) {
-	_, err := db.Query(fmt.Sprintf("UPDATE %s SET %s WHERE %s", tableProperties.tableName, updateEntry.newValues, updateEntry.conditions))
+	query := fmt.Sprintf("UPDATE %s SET %s", tableProperties.tableName, updateEntry.newValues)
+	appendQueryWithCondition(query, updateEntry.conditions)
+
+	_, err := db.Query(query)
 
 	if err != nil {
 		log.Fatal(err)
@@ -76,15 +80,29 @@ func update(db *sql.DB, tableProperties TableProperties, updateEntry UpdateEntry
 }
 
 func delete(db *sql.DB, tableProperties TableProperties, deleteQuery DeleteQuery) {
-	_, err := db.Query(fmt.Sprintf("DELETE FROM %s WHERE %s", tableProperties.tableName, deleteQuery.conditions))
+	query := fmt.Sprintf("DELETE FROM %s", tableProperties.tableName)
+	appendQueryWithCondition(query, deleteQuery.conditions)
+	_, err := db.Query(query)
 
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
+func appendQueryWithCondition(query string, queryCondition []string) string {
+	if len(queryCondition) > 0 {
+		conditions := strings.Join(queryCondition, " AND ")
+		query += fmt.Sprintf(" WHERE %s;", conditions)
+	}
+
+	return query
+}
+
 func count(db *sql.DB, tableProperties TableProperties, countQuery CountQuery) int64 {
-	rows, err := db.Query(fmt.Sprintf("SELECT COUNT * FROM %s WHERE %s", tableProperties.tableName, countQuery.conditions))
+	query := fmt.Sprintf("SELECT COUNT (*) FROM %s", tableProperties.tableName)
+	appendQueryWithCondition(query, countQuery.conditions)
+
+	rows, err := db.Query(query)
 
 	if err != nil {
 		log.Fatal(err)

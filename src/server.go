@@ -21,32 +21,36 @@ func startServer() {
 	}
 
 	toDo := ToDo{
-		Title:       "Buy Groceries",
-		Description: "Get some food for the week",
+		Title: "Buy Groceries",
+		// Description: "Get some food for the week",
 	}
+	fmt.Println("waananan: |" + toDo.Title + "|")
 
 	createTableIfNotExists(db, todoTableProperties)
 	// insertOne(db, todoTableProperties, toDo.SerializeForInsert())
 
 	// rows := get(db, todoTableProperties, toDo.SerializeForQueryWithAllFields())
-	rows := get(db, todoTableProperties, toDo.SerializeForQueryAllDataWithSelectFields([]string{"title"}))
+	// rows := get(db, todoTableProperties, toDo.SerializeForQueryAllDataWithSelectFields([]string{"title"}))
+	count := count(db, todoTableProperties, toDo.SerializeForCountWithFilter())
 
-	for rows.Next() {
-		// var id string
-		var title string
-		// var description string
-		// err := rows.Scan(&id, &title, &description)
-		err := rows.Scan(&title)
-		if err != nil {
-			log.Fatalln(err)
-			break
-		}
-		// fmt.Println("id", id)
-		fmt.Println("title", title)
-		// fmt.Println("description", description)
-		// names = append(names, name)
-	}
-	rows.Close()
+	fmt.Println("Count", count)
+
+	// for rows.Next() {
+	// 	// var id string
+	// 	var title string
+	// 	// var description string
+	// 	// err := rows.Scan(&id, &title, &description)
+	// 	err := rows.Scan(&title)
+	// 	if err != nil {
+	// 		log.Fatalln(err)
+	// 		break
+	// 	}
+	// 	// fmt.Println("id", id)
+	// 	fmt.Println("title", title)
+	// 	// fmt.Println("description", description)
+	// 	// names = append(names, name)
+	// }
+	// rows.Close()
 
 	http.HandleFunc("/health", handleHealthCheck)
 	log.Fatal(http.ListenAndServe(":"+ac.appPort, nil))
