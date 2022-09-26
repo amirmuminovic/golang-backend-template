@@ -6,32 +6,26 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-type RabbitMQConfig struct {
-	exchangeName       string
-	exchangeType       string
-	exchangeDurable    bool
-	exchangeAutoDelete bool
-	exchangeInternal   bool
-	exchangeNoWait     bool
-	exchangeArguments  amqp.Table
-	routingKey         string
-	messageMandatory   bool
-	messageImmediate   bool
-	messageContentType string
+func countSomeStuff(r Repository, t ToDo) {
+	count := r.count(t.SerializeForCountAll())
+	fmt.Printf("The count is %d", count)
 }
 
 func main() {
 	ac := getConfig()
 	db := connectToDb(ac)
-	rmq := connectToRMQ(ac)
-	channel := createChannel(rmq)
+	rmqService := RabbitMQService{
+		ac: ac,
+	}
 
+	rmqService.connect()
+	rmqService.createChannel()
 	toDo := ToDo{
 		Title:       "Buy Groceries",
 		Description: "Get some food for the week",
 	}
 
-	rmqConfig := RabbitMQConfig{
+	ec := ExchangeSettings{
 		exchangeName:       "todoapps",
 		exchangeType:       amqp.ExchangeTopic,
 		exchangeDurable:    true,
@@ -39,33 +33,41 @@ func main() {
 		exchangeInternal:   false,
 		exchangeNoWait:     false,
 		exchangeArguments:  nil,
-		routingKey:         "to-do-apps",
-		messageMandatory:   false, // TODO: I'd like to revise what this actually means
-		messageImmediate:   false, // TODO: I'd like to revise what this actually means
-		messageContentType: "application/json",
 	}
 
-	createExchange(channel, rmqConfig)
+	rmqService.createTopic(ec)
 
-	publishMessage(channel, rmqConfig, toDo.SerializeToJson())
-
-	startServer(ac)
+	rmqMessage := RMQMessageConfig{
+		exchangeName:       "todoapps",
+		routingKey:         "to-do-apps",
+		messageMandatory:   false,
+		messageImmediate:   false,
+		messageContentType: "application/json",
+	}
+	rmqService.publishMessage(rmqMessage, toDo.SerializeToJson())
 
 	todoTableProperties := TableProperties{
 		tableName:       "foobara",
 		tableDefinition: "id serial primary key, title varchar(64), description varchar(255)",
 	}
 
-	fmt.Println("waananan: |" + toDo.Title + "|")
+	toDoRepo := SQLRepository{
+		db: db,
+		tp: todoTableProperties,
+	}
 
-	createTableIfNotExists(db, todoTableProperties)
+	toDoRepo.createTableIfNotExists()
+	// count := toDoRepo.count(toDo.SerializeForCountAll())
+	countSomeStuff(toDoRepo, toDo)
+
+	// createTableIfNotExists(db, todoTableProperties)
 	// insertOne(db, todoTableProperties, toDo.SerializeForInsert())
 
 	// rows := get(db, todoTableProperties, toDo.SerializeForQueryWithAllFields())
 	// rows := get(db, todoTableProperties, toDo.SerializeForQueryAllDataWithSelectFields([]string{"title"}))
-	count := count(db, todoTableProperties, toDo.SerializeForCountWithFilter())
+	// count := count(db, todoTableProperties, toDo.SerializeForCountWithFilter())
 
-	fmt.Println("Count", count)
+	// fmt.Println("Count", count)
 
 	// for rows.Next() {
 	// 	// var id string
@@ -83,5 +85,5 @@ func main() {
 	// 	// names = append(names, name)
 	// }
 	// rows.Close()
-
+	startServer(ac)
 }

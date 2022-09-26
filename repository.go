@@ -7,6 +7,20 @@ import (
 	"strings"
 )
 
+type SQLRepository struct {
+	db *sql.DB
+	tp TableProperties
+}
+
+type Repository interface {
+	createTableIfNotExists()
+	insertOne(i InsertionEntry)
+	get(g GetQuery) *sql.Rows
+	update(u UpdateEntry)
+	delete(d DeleteQuery)
+	count(c CountQuery) int64
+}
+
 type TableProperties struct {
 	tableName       string
 	tableDefinition string
@@ -35,31 +49,31 @@ type CountQuery struct {
 	conditions []string
 }
 
-func createTableIfNotExists(db *sql.DB, tableProperties TableProperties) {
-	_, err := db.Query(fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (%s);", tableProperties.tableName, tableProperties.tableDefinition))
+func (r SQLRepository) createTableIfNotExists() {
+	_, err := r.db.Query(fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (%s);", r.tp.tableName, r.tp.tableDefinition))
 
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
-func insertOne(db *sql.DB, tableProperties TableProperties, databaseEntry InsertionEntry) {
+func (r SQLRepository) insertOne(databaseEntry InsertionEntry) {
 	keys := strings.Join(databaseEntry.keys, ",")
 	values := strings.Join(databaseEntry.values, ",")
 
-	_, err := db.Query(fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s);", tableProperties.tableName, keys, values))
+	_, err := r.db.Query(fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s);", r.tp.tableName, keys, values))
 
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
-func get(db *sql.DB, tableProperties TableProperties, databaseQuery GetQuery) *sql.Rows {
+func (r SQLRepository) get(databaseQuery GetQuery) *sql.Rows {
 	keys := strings.Join(databaseQuery.keys, ",")
-	query := fmt.Sprintf("SELECT %s FROM %s", keys, tableProperties.tableName)
+	query := fmt.Sprintf("SELECT %s FROM %s", keys, r.tp.tableName)
 	appendQueryWithCondition(query, databaseQuery.conditions)
 
-	rows, err := db.Query(query)
+	rows, err := r.db.Query(query)
 
 	if err != nil {
 		log.Fatal(err)
@@ -68,41 +82,32 @@ func get(db *sql.DB, tableProperties TableProperties, databaseQuery GetQuery) *s
 	return rows
 }
 
-func update(db *sql.DB, tableProperties TableProperties, updateEntry UpdateEntry) {
-	query := fmt.Sprintf("UPDATE %s SET %s", tableProperties.tableName, updateEntry.newValues)
+func (r SQLRepository) update(updateEntry UpdateEntry) {
+	query := fmt.Sprintf("UPDATE %s SET %s", r.tp.tableName, updateEntry.newValues)
 	appendQueryWithCondition(query, updateEntry.conditions)
 
-	_, err := db.Query(query)
+	_, err := r.db.Query(query)
 
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
-func delete(db *sql.DB, tableProperties TableProperties, deleteQuery DeleteQuery) {
-	query := fmt.Sprintf("DELETE FROM %s", tableProperties.tableName)
+func (r SQLRepository) delete(deleteQuery DeleteQuery) {
+	query := fmt.Sprintf("DELETE FROM %s", r.tp.tableName)
 	appendQueryWithCondition(query, deleteQuery.conditions)
-	_, err := db.Query(query)
+	_, err := r.db.Query(query)
 
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
-func appendQueryWithCondition(query string, queryCondition []string) string {
-	if len(queryCondition) > 0 {
-		conditions := strings.Join(queryCondition, " AND ")
-		query += fmt.Sprintf(" WHERE %s;", conditions)
-	}
-
-	return query
-}
-
-func count(db *sql.DB, tableProperties TableProperties, countQuery CountQuery) int64 {
-	query := fmt.Sprintf("SELECT COUNT (*) FROM %s", tableProperties.tableName)
+func (r SQLRepository) count(countQuery CountQuery) int64 {
+	query := fmt.Sprintf("SELECT COUNT (*) FROM %s", r.tp.tableName)
 	appendQueryWithCondition(query, countQuery.conditions)
 
-	rows, err := db.Query(query)
+	rows, err := r.db.Query(query)
 
 	if err != nil {
 		log.Fatal(err)
@@ -114,4 +119,13 @@ func count(db *sql.DB, tableProperties TableProperties, countQuery CountQuery) i
 	}
 
 	return count
+}
+
+func appendQueryWithCondition(query string, queryCondition []string) string {
+	if len(queryCondition) > 0 {
+		conditions := strings.Join(queryCondition, " AND ")
+		query += fmt.Sprintf(" WHERE %s;", conditions)
+	}
+
+	return query
 }
